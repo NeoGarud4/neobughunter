@@ -1,4 +1,156 @@
-# Logs tab
+#!/usr/bin/env python3
+"""
+NEO GARUD4 Bug Hunter - Advanced Web Vulnerability Scanner
+Graphical User Interface Version
+For authorized security testing only
+"""
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox, scrolledtext
+import requests
+import urllib3
+import threading
+from bs4 import BeautifulSoup
+import time
+from urllib.parse import urljoin, urlparse
+import json
+import socket
+from concurrent.futures import ThreadPoolExecutor
+import webbrowser
+
+# Suppress SSL warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+class NeoGarud4GUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("NEO GARUD4 Bug Hunter")
+        self.root.geometry("1000x700")
+        self.root.configure(bg='#0a0a0a')
+        self.root.resizable(True, True)
+        
+        # Scanner variables
+        self.scanner = None
+        self.scan_thread = None
+        self.is_scanning = False
+        
+        # Create custom style
+        self.setup_styles()
+        self.create_widgets()
+        
+    def setup_styles(self):
+        # Configure styles
+        self.style = ttk.Style()
+        self.style.theme_use('clam')
+        
+        # Custom styles
+        self.style.configure('TFrame', background='#0a0a0a')
+        self.style.configure('TLabel', background='#0a0a0a', foreground='#00ff00', font=('Courier', 10))
+        self.style.configure('TButton', background='#1a1a1a', foreground='#00ff00', font=('Courier', 9, 'bold'))
+        self.style.map('TButton', background=[('active', '#2a2a2a')])
+        self.style.configure('Header.TLabel', font=('Courier', 14, 'bold'), foreground='#ff0000')
+        self.style.configure('Title.TLabel', font=('Courier', 12, 'bold'), foreground='#00ff00')
+        
+    def create_widgets(self):
+        # Main frame
+        main_frame = ttk.Frame(self.root)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Header with ASCII art
+        header_frame = ttk.Frame(main_frame)
+        header_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ascii_art = """
+    ███╗   ██╗███████╗ ██████╗  █████╗ ██╗   ██╗██████╗  █████╗ ██████╗ 
+    ████╗  ██║██╔════╝██╔════╝ ██╔══██╗██║   ██║██╔══██╗██╔══██╗██╔══██╗
+    ██╔██╗ ██║█████╗  ██║  ███╗███████║██║   ██║██║  ██║███████║██████╔╝
+    ██║╚██╗██║██╔══╝  ██║   ██║██╔══██║██║   ██║██║  ██║██╔══██║██╔══██╗
+    ██║ ╚████║███████╗╚██████╔╝██║  ██║╚██████╔╝██████╔╝██║  ██║██║  ██║
+    ╚═╝  ╚═══╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
+        """
+        
+        ascii_label = ttk.Label(header_frame, text=ascii_art, justify=tk.CENTER, style='Header.TLabel')
+        ascii_label.pack()
+        
+        # Target input frame
+        target_frame = ttk.Frame(main_frame)
+        target_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(target_frame, text="Target URL:", style='Title.TLabel').pack(anchor=tk.W)
+        self.url_entry = ttk.Entry(target_frame, font=('Courier', 10), width=70)
+        self.url_entry.pack(fill=tk.X, pady=(5, 0))
+        self.url_entry.insert(0, "https://example.com")
+        
+        # Options frame
+        options_frame = ttk.Frame(main_frame)
+        options_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        # Threads
+        threads_frame = ttk.Frame(options_frame)
+        threads_frame.pack(side=tk.LEFT, padx=(0, 20))
+        ttk.Label(threads_frame, text="Threads:", style='TLabel').pack(anchor=tk.W)
+        self.threads_var = tk.StringVar(value="10")
+        threads_entry = ttk.Entry(threads_frame, textvariable=self.threads_var, width=10, font=('Courier', 10))
+        threads_entry.pack()
+        
+        # Timeout
+        timeout_frame = ttk.Frame(options_frame)
+        timeout_frame.pack(side=tk.LEFT, padx=(0, 20))
+        ttk.Label(timeout_frame, text="Timeout (s):", style='TLabel').pack(anchor=tk.W)
+        self.timeout_var = tk.StringVar(value="10")
+        timeout_entry = ttk.Entry(timeout_frame, textvariable=self.timeout_var, width=10, font=('Courier', 10))
+        timeout_entry.pack()
+        
+        # Buttons frame
+        buttons_frame = ttk.Frame(main_frame)
+        buttons_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        self.start_button = ttk.Button(buttons_frame, text="▶ START SCAN", command=self.start_scan)
+        self.start_button.pack(side=tk.LEFT, padx=(0, 10))
+        
+        self.stop_button = ttk.Button(buttons_frame, text="⏹ STOP SCAN", command=self.stop_scan, state=tk.DISABLED)
+        self.stop_button.pack(side=tk.LEFT, padx=(0, 10))
+        
+        self.export_button = ttk.Button(buttons_frame, text="💾 EXPORT RESULTS", command=self.export_results, state=tk.DISABLED)
+        self.export_button.pack(side=tk.LEFT)
+        
+        # Progress bar
+        self.progress = ttk.Progressbar(main_frame, mode='indeterminate')
+        self.progress.pack(fill=tk.X, pady=(0, 10))
+        
+        # Results notebook
+        self.notebook = ttk.Notebook(main_frame)
+        self.notebook.pack(fill=tk.BOTH, expand=True)
+        
+        # Server info tab
+        self.server_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.server_frame, text="🌐 Server Info")
+        self.server_text = scrolledtext.ScrolledText(self.server_frame, wrap=tk.WORD, bg='#1a1a1a', fg='#00ff00', font=('Courier', 9))
+        self.server_text.pack(fill=tk.BOTH, expand=True)
+        
+        # Vulnerabilities tab
+        self.vulns_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.vulns_frame, text="⚠️ Vulnerabilities")
+        self.vulns_text = scrolledtext.ScrolledText(self.vulns_frame, wrap=tk.WORD, bg='#1a1a1a', fg='#ff5555', font=('Courier', 9))
+        self.vulns_text.pack(fill=tk.BOTH, expand=True)
+        
+        # XSS tab
+        self.xss_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.xss_frame, text="💉 XSS Points")
+        self.xss_text = scrolledtext.ScrolledText(self.xss_frame, wrap=tk.WORD, bg='#1a1a1a', fg='#ffff00', font=('Courier', 9))
+        self.xss_text.pack(fill=tk.BOTH, expand=True)
+        
+        # SQLi tab
+        self.sqli_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.sqli_frame, text="🧨 SQL Injection")
+        self.sqli_text = scrolledtext.ScrolledText(self.sqli_frame, wrap=tk.WORD, bg='#1a1a1a', fg='#ff5555', font=('Courier', 9))
+        self.sqli_text.pack(fill=tk.BOTH, expand=True)
+        
+        # Logs tab
+        self.logs_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.logs_frame, text="📝 Logs")
+        self.logs_text = scrolledtext.ScrolledText(self.logs
+
+            # Logs tab
         self.logs_frame = ttk.Frame(self.notebook)
         self.notebook.add(self.logs_frame, text="📝 Logs")
         self.logs_text = scrolledtext.ScrolledText(self.logs_frame, wrap=tk.WORD, bg='#1a1a1a', fg='#00ff00', font=('Courier', 9))
