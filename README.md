@@ -2,7 +2,7 @@
 
 <img width="1536" height="1024" alt="ChatGPT Image Nov 9, 2025, 03_38_00 AM" src="https://github.com/user-attachments/assets/2cc4ce4a-29ea-4e0b-a989-ea91438f6175" />
 
-Advanced Web Vulnerability Scanner with both CLI and GUI interfaces.
+Advanced Web Vulnerability Scanner with both CLI and GUI interfaces
 
 Version 2.5 GUI :
 
@@ -28,11 +28,9 @@ Version 1.0 CLI :
 
 1. Clone the repository:
    ```bash
- git clone https://github.com/NeoGarud4/neobughunter.git
+   git clone https://github.com/NeoGarud4/neobughunter.git
    cd neobughunter
    pip install -r requirements.txt
-
-  ## How To run 
-  python3 NEOBUGHUNTER-CLI.py https://xhamster.com
-  python3 NEOBUGHUNTER-GUI.py http://example.com
-
+   python3 NEOBUGHUNTER-CLI.py https://xhamster.com
+   python3 NEOBUGHUNTER-GUI.py http://example.com
+   '''
