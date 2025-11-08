@@ -28,5 +28,11 @@ Version 1.0 CLI :
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/neo-garud4-bug-hunter.git
-   cd neo-garud4-bug-hunter
+ git clone https://github.com/NeoGarud4/neobughunter.git
+   cd neobughunter
+   pip install -r requirements.txt
+
+  ## How To run 
+  python3 NEOBUGHUNTER-CLI.py https://xhamster.com
+  python3 NEOBUGHUNTER-GUI.py http://example.com
+
